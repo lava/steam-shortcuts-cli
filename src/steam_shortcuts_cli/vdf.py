@@ -89,23 +89,98 @@ class VDFParser:
 
         return shortcuts
 
+    # Known field names (case-insensitive lookup keys mapped to canonical names)
+    KNOWN_STRING_FIELDS = {
+        "appname": "appname",
+        "exe": "exe",
+        "startdir": "start_dir",
+        "icon": "icon",
+        "shortcutpath": "shortcut_path",
+        "launchoptions": "launch_options",
+    }
+    KNOWN_INT_FIELDS = {
+        "ishidden": "is_hidden",
+        "allowdesktopconfig": "allow_desktop_config",
+        "allowoverlay": "allow_overlay",
+        "openvr": "openvr",
+        "lastplaytime": "last_play_time",
+    }
+    KNOWN_BOOL_FIELDS = {"ishidden", "allowdesktopconfig", "allowoverlay", "openvr"}
+
     def _parse_shortcut(self, data: bytes) -> SteamShortcut | None:
         """Parse a single shortcut entry."""
         try:
             fields = self._extract_fields(data)
+
+            # Separate known fields from extra fields
+            extra_strings: dict[str, str] = {}
+            extra_ints: dict[str, int] = {}
+
+            # Collect values for known fields and extras
+            appname = ""
+            exe = ""
+            start_dir = ""
+            icon = ""
+            shortcut_path = ""
+            launch_options = ""
+            is_hidden = False
+            allow_desktop_config = True
+            allow_overlay = True
+            openvr = False
+            last_play_time = 0
+            tags: list[str] = []
+
+            for name, value in fields.items():
+                lower_name = name.lower()
+
+                if lower_name == "tags":
+                    tags = value if isinstance(value, list) else []
+                elif lower_name in self.KNOWN_STRING_FIELDS:
+                    canonical = self.KNOWN_STRING_FIELDS[lower_name]
+                    if canonical == "appname":
+                        appname = value
+                    elif canonical == "exe":
+                        exe = value
+                    elif canonical == "start_dir":
+                        start_dir = value
+                    elif canonical == "icon":
+                        icon = value
+                    elif canonical == "shortcut_path":
+                        shortcut_path = value
+                    elif canonical == "launch_options":
+                        launch_options = value
+                elif lower_name in self.KNOWN_INT_FIELDS:
+                    canonical = self.KNOWN_INT_FIELDS[lower_name]
+                    if canonical == "is_hidden":
+                        is_hidden = bool(value)
+                    elif canonical == "allow_desktop_config":
+                        allow_desktop_config = bool(value)
+                    elif canonical == "allow_overlay":
+                        allow_overlay = bool(value)
+                    elif canonical == "openvr":
+                        openvr = bool(value)
+                    elif canonical == "last_play_time":
+                        last_play_time = value
+                elif isinstance(value, str):
+                    extra_strings[name] = value
+                elif isinstance(value, int):
+                    extra_ints[name] = value
+
             return SteamShortcut(
-                appname=fields.get("appname", fields.get("AppName", "")),
-                exe=fields.get("exe", fields.get("Exe", "")),
-                start_dir=fields.get("StartDir", fields.get("startdir", "")),
-                icon=fields.get("icon", ""),
-                shortcut_path=fields.get("ShortcutPath", ""),
-                launch_options=fields.get("LaunchOptions", ""),
-                is_hidden=fields.get("IsHidden", False),
-                allow_desktop_config=fields.get("AllowDesktopConfig", True),
-                allow_overlay=fields.get("AllowOverlay", True),
-                openvr=fields.get("OpenVR", False),
-                last_play_time=fields.get("LastPlayTime", 0),
-                tags=fields.get("tags", []),
+                appname=appname,
+                exe=exe,
+                start_dir=start_dir,
+                icon=icon,
+                shortcut_path=shortcut_path,
+                launch_options=launch_options,
+                is_hidden=is_hidden,
+                allow_desktop_config=allow_desktop_config,
+                allow_overlay=allow_overlay,
+                openvr=openvr,
+                last_play_time=last_play_time,
+                tags=tags,
+                extra_strings=extra_strings,
+                extra_ints=extra_ints,
             )
         except Exception:
             return None
@@ -253,12 +328,20 @@ class VDFFormatter:
         result += self._format_string("ShortcutPath", shortcut.shortcut_path)
         result += self._format_string("LaunchOptions", shortcut.launch_options)
 
+        # Extra string fields (preserve unknown fields)
+        for name, value in shortcut.extra_strings.items():
+            result += self._format_string(name, value)
+
         # Boolean/int fields
         result += self._format_int("IsHidden", 1 if shortcut.is_hidden else 0)
         result += self._format_int("AllowDesktopConfig", 1 if shortcut.allow_desktop_config else 0)
         result += self._format_int("AllowOverlay", 1 if shortcut.allow_overlay else 0)
         result += self._format_int("OpenVR", 1 if shortcut.openvr else 0)
         result += self._format_int("LastPlayTime", shortcut.last_play_time)
+
+        # Extra int fields (preserve unknown fields)
+        for name, value in shortcut.extra_ints.items():
+            result += self._format_int(name, value)
 
         # Tags section
         result += self._format_tags(shortcut.tags)

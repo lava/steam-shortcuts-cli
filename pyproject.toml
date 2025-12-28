@@ -1,12 +1,12 @@
 [project]
 name = "steam-shortcuts-cli"
-version = "0.2.0"
+version = "0.3.0"
 description = "A simple cli to manage steam external shortcuts"
 readme = "README.md"
 license = "MIT"
 authors = [{ name = "Benno Evers" }]
 requires-python = ">=3.14"
-dependencies = ["docopt", "pydantic>=2.0"]
+dependencies = ["docopt", "pydantic>=2.0", "pillow>=10.0"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",

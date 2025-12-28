@@ -24,6 +24,12 @@ class SteamShortcut(BaseModel):
     openvr: bool = Field(default=False, description="Show in VR library")
     last_play_time: int = Field(default=0, description="Unix timestamp of last play")
     tags: list[str] = Field(default_factory=list, description="Category tags")
+    extra_strings: dict[str, str] = Field(
+        default_factory=dict, description="Unknown string fields from VDF"
+    )
+    extra_ints: dict[str, int] = Field(
+        default_factory=dict, description="Unknown integer fields from VDF"
+    )
 
     def __hash__(self) -> int:
         return hash(
