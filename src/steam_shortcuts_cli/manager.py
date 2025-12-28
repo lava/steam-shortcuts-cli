@@ -157,7 +157,7 @@ class SteamShortcutManager:
         *,
         start_dir: str = "",
         icon: str = "",
-        launch_options: str = "",
+        launch_options: list[str] | None = None,
         tags: list[str] | None = None,
         is_hidden: bool = False,
         allow_overlay: bool = True,
@@ -171,7 +171,7 @@ class SteamShortcutManager:
             exe: Path to the executable
             start_dir: Working directory (defaults to exe's directory)
             icon: Path to icon file
-            launch_options: Command line arguments
+            launch_options: Command line arguments as list of args
             tags: Category tags
             is_hidden: Whether to hide the shortcut
             allow_overlay: Allow Steam overlay
@@ -199,12 +199,15 @@ class SteamShortcutManager:
         if " " in exe and not (exe.startswith('"') and exe.endswith('"')):
             exe = f'"{exe}"'
 
+        # Convert launch_options list to string
+        launch_options_str = " ".join(launch_options) if launch_options else ""
+
         shortcut = SteamShortcut(
             appname=appname,
             exe=exe,
             start_dir=start_dir,
             icon=icon,
-            launch_options=launch_options,
+            launch_options=launch_options_str,
             tags=tags or [],
             is_hidden=is_hidden,
             allow_overlay=allow_overlay,
@@ -213,6 +216,74 @@ class SteamShortcutManager:
         )
 
         self._shortcuts.shortcuts.append(shortcut)
+        return shortcut
+
+    def update(
+        self,
+        appname: str,
+        *,
+        exe: str | None = None,
+        start_dir: str | None = None,
+        icon: str | None = None,
+        launch_options: list[str] | None = None,
+        tags: list[str] | None = None,
+        is_hidden: bool | None = None,
+        allow_overlay: bool | None = None,
+        allow_desktop_config: bool | None = None,
+        openvr: bool | None = None,
+    ) -> SteamShortcut:
+        """Update an existing shortcut.
+
+        Args:
+            appname: Name of the shortcut to update
+            exe: New path to the executable (None to keep existing)
+            start_dir: New working directory (None to keep existing)
+            icon: New path to icon file (None to keep existing)
+            launch_options: New command line arguments (None to keep existing)
+            tags: New category tags (None to keep existing)
+            is_hidden: Whether to hide the shortcut (None to keep existing)
+            allow_overlay: Allow Steam overlay (None to keep existing)
+            allow_desktop_config: Allow controller desktop config (None to keep existing)
+            openvr: Show in VR library (None to keep existing)
+
+        Returns:
+            The updated SteamShortcut
+
+        Raises:
+            ShortcutNotFoundError: If the shortcut doesn't exist
+        """
+        shortcut = self.get(appname)
+        if shortcut is None:
+            raise ShortcutNotFoundError(f"Shortcut '{appname}' not found")
+
+        if exe is not None:
+            # Ensure exe is quoted if it contains spaces and isn't already quoted
+            if " " in exe and not (exe.startswith('"') and exe.endswith('"')):
+                exe = f'"{exe}"'
+            shortcut.exe = exe
+            # Update start_dir if not explicitly provided
+            if start_dir is None:
+                exe_path = Path(exe.strip('"'))
+                if exe_path.parent.exists():
+                    shortcut.start_dir = f'"{exe_path.parent}"'
+
+        if start_dir is not None:
+            shortcut.start_dir = start_dir
+        if icon is not None:
+            shortcut.icon = icon
+        if launch_options is not None:
+            shortcut.launch_options = " ".join(launch_options)
+        if tags is not None:
+            shortcut.tags = tags
+        if is_hidden is not None:
+            shortcut.is_hidden = is_hidden
+        if allow_overlay is not None:
+            shortcut.allow_overlay = allow_overlay
+        if allow_desktop_config is not None:
+            shortcut.allow_desktop_config = allow_desktop_config
+        if openvr is not None:
+            shortcut.openvr = openvr
+
         return shortcut
 
     def remove(self, appname: str) -> SteamShortcut:
