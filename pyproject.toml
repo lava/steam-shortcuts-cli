@@ -1,0 +1,14 @@
+[project]
+name = "steam-shortcuts-cli"
+version = "0.1.0"
+description = "A simple cli to manage steam external shortcuts"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = ["docopt", "pydantic>=2.0"]
+
+[project.scripts]
+steam-shortcuts-cli = "steam_shortcuts_cli.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
